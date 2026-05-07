@@ -28,6 +28,11 @@ class OpenAIModelEnum {
   static GPT_TURBO_35_16K_0613 = 'gpt-3.5-turbo-16k-0613'
 
   /**
+   * gpt-5.1
+   */
+  static GPT_5_1 = 'gpt-5.1'
+
+  /**
    * 默认请求URL
    */
   static REQUEST_URL = 'https://api.openai.com'
@@ -36,6 +41,10 @@ class OpenAIModelEnum {
    * 模型列表
    */
   static MODEL_LIST = [
+    {
+      value: OpenAIModelEnum.GPT_5_1,
+      label: OpenAIModelEnum.GPT_5_1
+    },
     {
       value: OpenAIModelEnum.GPT_TURBO_35,
       label: OpenAIModelEnum.GPT_TURBO_35
