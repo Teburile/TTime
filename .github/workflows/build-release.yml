@@ -24,6 +24,13 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install Visual Studio Build Tools components
+        shell: pwsh
+        run: |
+          choco install visualstudio2022buildtools `
+            --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.Windows10SDK.19041 --includeRecommended --quiet --wait" `
+            -y
+
       - name: Patch package version
         shell: pwsh
         run: |
