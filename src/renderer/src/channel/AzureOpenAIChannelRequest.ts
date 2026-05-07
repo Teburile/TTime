@@ -174,7 +174,7 @@ class AzureOpenAIChannelRequest {
         // 每次提交相同的内容时 按照 0 - 1 的概率返回不同的答案
         // 我们这里默认为 0 ，重复提交相同的内容返回同样的结果
         temperature: 0,
-        max_tokens: 1000,
+        max_completion_tokens: 1000,
         top_p: 1,
         frequency_penalty: 1,
         presence_penalty: 1,
