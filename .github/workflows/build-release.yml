@@ -7,22 +7,48 @@ on:
         description: "Version, for example 0.9.16-azurefix1"
         required: true
         default: "0.9.16-azurefix1"
+      create_release:
+        description: "Create GitHub Release after build"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 permissions:
   contents: write
 
 jobs:
   build-win-portable:
+    name: Build Windows Portable
     runs-on: windows-latest
+
+    env:
+      npm_config_msvs_version: "2022"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 16
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 16
+
+      - name: Setup Python 3.11 for node-gyp
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure node-gyp Python
+        shell: pwsh
+        run: |
+          npm config set python "$env:pythonLocation\python.exe"
+          node --version
+          npm --version
+          python --version
+          npm config get python
 
       - name: Install Visual Studio Build Tools components
         shell: pwsh
@@ -37,12 +63,26 @@ jobs:
           $pkg = Get-Content package.json -Raw | ConvertFrom-Json
           $pkg.version = "${{ github.event.inputs.version }}"
           $pkg | ConvertTo-Json -Depth 100 | Set-Content package.json -Encoding UTF8
+          Get-Content package.json | Select-String '"version"'
 
       - name: Install dependencies
-        run: npm run npm-i-extend-modules-update
+        shell: pwsh
+        run: |
+          npm run npm-i-extend-modules-update
 
       - name: Build Windows portable
-        run: npm run build:win:portable
+        shell: pwsh
+        run: |
+          npm run build:win:portable
+
+      - name: List dist files
+        shell: pwsh
+        run: |
+          if (Test-Path dist) {
+            Get-ChildItem dist -Recurse | Select-Object FullName, Length
+          } else {
+            Write-Error "dist directory not found"
+          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -54,3 +94,33 @@ jobs:
             dist/**/*.7z
             dist/**/*.blockmap
             dist/**/*.yml
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v${{ github.event.inputs.version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag $tag
+          git push origin $tag
+
+          $assets = Get-ChildItem dist -Recurse -File |
+            Where-Object {
+              $_.Extension -in ".exe", ".zip", ".7z", ".blockmap", ".yml"
+            } |
+            ForEach-Object { $_.FullName }
+
+          if (-not $assets -or $assets.Count -eq 0) {
+            Write-Error "No release assets found in dist"
+            exit 1
+          }
+
+          gh release create $tag $assets `
+            --title "TTime AzureOpenAI Fix $tag" `
+            --notes "Unofficial TTime fork build. Fixed AzureOpenAI request parameter compatibility issue."
