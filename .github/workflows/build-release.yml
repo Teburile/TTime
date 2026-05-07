@@ -1,0 +1,49 @@
+name: Build TTime Fork
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, for example 0.9.16-azurefix1"
+        required: true
+        default: "0.9.16-azurefix1"
+
+permissions:
+  contents: write
+
+jobs:
+  build-win-portable:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Patch package version
+        shell: pwsh
+        run: |
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          $pkg.version = "${{ github.event.inputs.version }}"
+          $pkg | ConvertTo-Json -Depth 100 | Set-Content package.json -Encoding UTF8
+
+      - name: Install dependencies
+        run: npm run npm-i-extend-modules-update
+
+      - name: Build Windows portable
+        run: npm run build:win:portable
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TTime-Windows-Portable-${{ github.event.inputs.version }}
+          path: |
+            dist/**/*.exe
+            dist/**/*.zip
+            dist/**/*.7z
+            dist/**/*.blockmap
+            dist/**/*.yml
